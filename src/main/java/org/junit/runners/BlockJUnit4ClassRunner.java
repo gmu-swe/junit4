@@ -3,11 +3,14 @@ package org.junit.runners;
 import static org.junit.internal.runners.rules.RuleMemberValidator.RULE_METHOD_VALIDATOR;
 import static org.junit.internal.runners.rules.RuleMemberValidator.RULE_VALIDATOR;
 
+import java.lang.reflect.Method;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
+import net.jonbell.crij.runtime.CheckpointRollbackAgent;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -299,6 +302,8 @@ public class BlockJUnit4ClassRunner extends SingleTestObjParentRunner<FrameworkM
         Statement statement = methodInvoker(method, test);
         statement = possiblyExpectingExceptions(method, test, statement);
         statement = withPotentialTimeout(method, test, statement);
+        statement = withCheckpoint(statement);
+        statement = withRollback(statement);
 //        statement = withBefores(method, test, statement);
 //        statement = withAfters(method, test, statement);
         statement = withRules(method, test, statement);
@@ -374,7 +379,50 @@ public class BlockJUnit4ClassRunner extends SingleTestObjParentRunner<FrameworkM
         return afters.isEmpty() ? statement : new RunAfters(statement, afters,
                 target);
     }
-
+    private static Method checkpointMethod;
+    private static Method rollbackMethod;
+    protected static Method getCheckpointMethod()
+    {
+        if(checkpointMethod == null)
+        {
+            try {
+                checkpointMethod = CheckpointRollbackAgent.class.getMethod("checkpointAllRoots");
+            } catch (NoSuchMethodException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            } catch (SecurityException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        return checkpointMethod;
+    }
+    protected static Method getRollbackMethod()
+    {
+        if(rollbackMethod == null)
+        {
+            try {
+                rollbackMethod = CheckpointRollbackAgent.class.getMethod("rollbackAllRoots");
+            } catch (NoSuchMethodException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            } catch (SecurityException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        return rollbackMethod;
+    }
+    protected Statement withCheckpoint(Statement statement) {
+        LinkedList<FrameworkMethod> befores = new LinkedList<FrameworkMethod>();
+        befores.add(new FrameworkMethod(getCheckpointMethod()));
+        return new RunBefores(statement, befores, null);
+    }
+    protected Statement withRollback(Statement statement) {
+        LinkedList<FrameworkMethod> befores = new LinkedList<FrameworkMethod>();
+        befores.add(new FrameworkMethod(getRollbackMethod()));
+        return new RunAfters(statement, befores, null);
+    }
     private Statement withRules(FrameworkMethod method, Object target,
             Statement statement) {
         List<TestRule> testRules = getTestRules(target);
