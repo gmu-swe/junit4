@@ -4,7 +4,7 @@
 
     <groupId>junit</groupId>
     <artifactId>junit</artifactId>
-    <version>4.13-SNAPSHOT</version>
+    <version>4.13-crij</version>
 
     <name>JUnit</name>
     <description>JUnit is a unit testing framework for Java, created by Erich Gamma and Kent Beck.</description>
@@ -122,6 +122,12 @@
             <version>${hamcrestVersion}</version>
             <scope>test</scope>
         </dependency>
+		<dependency>
+			<groupId>net.jonbell.java</groupId>
+			<artifactId>CRIJ</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+			<scope>compile</scope>
+		</dependency>
     </dependencies>
 
     <build>
@@ -183,9 +189,9 @@
                                         manager instead).
                                     </message>
                                 </requireNoRepositories>
-                                <requireReleaseDeps>
+                               <!--  <requireReleaseDeps>
                                     <message>No Snapshots Dependencies Allowed!</message>
-                                </requireReleaseDeps>
+                                </requireReleaseDeps> -->
                             </rules>
                         </configuration>
                     </execution>

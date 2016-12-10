@@ -241,7 +241,7 @@ public abstract class ParentRunner<T> extends Runner implements Filterable,
      * @return a RunRules statement if any class-level {@link Rule}s are
      *         found, or the base statement
      */
-    private Statement withClassRules(Statement statement) {
+    protected Statement withClassRules(Statement statement) {
         List<TestRule> classRules = classRules();
         return classRules.isEmpty() ? statement :
                 new RunRules(statement, classRules, getDescription());
@@ -431,7 +431,7 @@ public abstract class ParentRunner<T> extends Runner implements Filterable,
         }
     }
 
-    private Collection<T> getFilteredChildren() {
+    protected Collection<T> getFilteredChildren() {
         if (filteredChildren == null) {
             synchronized (childrenLock) {
                 if (filteredChildren == null) {

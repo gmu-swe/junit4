@@ -14,6 +14,7 @@ import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.Test.None;
+import org.junit.internal.runners.SingleTestObjParentRunner;
 import org.junit.internal.runners.model.ReflectiveCallable;
 import org.junit.internal.runners.statements.ExpectException;
 import org.junit.internal.runners.statements.Fail;
@@ -55,7 +56,7 @@ import org.junit.runners.model.Statement;
  *
  * @since 4.5
  */
-public class BlockJUnit4ClassRunner extends ParentRunner<FrameworkMethod> {
+public class BlockJUnit4ClassRunner extends SingleTestObjParentRunner<FrameworkMethod> {
 
     private final ConcurrentMap<FrameworkMethod, Description> methodDescriptions = new ConcurrentHashMap<FrameworkMethod, Description>();
 
@@ -235,9 +236,13 @@ public class BlockJUnit4ClassRunner extends ParentRunner<FrameworkMethod> {
      * @since 4.13
      */
     protected Object createTest(FrameworkMethod method) throws Exception {
-        return createTest();
+        return createTest0(method);
     }
 
+    protected Object createTest0(FrameworkMethod method) throws Exception {
+        return createTest0();
+    }
+    
     /**
      * Returns the name that describes {@code method} for {@link Description}s.
      * Default implementation is the method's name
@@ -284,7 +289,7 @@ public class BlockJUnit4ClassRunner extends ParentRunner<FrameworkMethod> {
             test = new ReflectiveCallable() {
                 @Override
                 protected Object runReflectiveCall() throws Throwable {
-                    return createTest(method);
+                    return createTest0(method);
                 }
             }.run();
         } catch (Throwable e) {
@@ -294,8 +299,8 @@ public class BlockJUnit4ClassRunner extends ParentRunner<FrameworkMethod> {
         Statement statement = methodInvoker(method, test);
         statement = possiblyExpectingExceptions(method, test, statement);
         statement = withPotentialTimeout(method, test, statement);
-        statement = withBefores(method, test, statement);
-        statement = withAfters(method, test, statement);
+//        statement = withBefores(method, test, statement);
+//        statement = withAfters(method, test, statement);
         statement = withRules(method, test, statement);
         return statement;
     }
