@@ -4,12 +4,14 @@ import static org.junit.internal.runners.rules.RuleMemberValidator.RULE_METHOD_V
 import static org.junit.internal.runners.rules.RuleMemberValidator.RULE_VALIDATOR;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
+import net.jonbell.crij.runtime.CRIJInstrumented;
 import net.jonbell.crij.runtime.CheckpointRollbackAgent;
 import org.junit.After;
 import org.junit.Before;
@@ -84,7 +86,7 @@ public class BlockJUnit4ClassRunner extends SingleTestObjParentRunner<FrameworkM
         } else {
             Statement statement;
             try {
-                statement = methodBlock(method);
+                statement = methodBlock(method, notifier);
             }
             catch (Throwable ex) {
                 statement = new Fail(ex);
@@ -228,6 +230,7 @@ public class BlockJUnit4ClassRunner extends SingleTestObjParentRunner<FrameworkM
      * the test class's no-argument constructor (validation should have ensured
      * one exists).
      */
+    @Override
     protected Object createTest() throws Exception {
         return getTestClass().getOnlyConstructor().newInstance();
     }
@@ -286,7 +289,10 @@ public class BlockJUnit4ClassRunner extends SingleTestObjParentRunner<FrameworkM
      * This can be overridden in subclasses, either by overriding this method,
      * or the implementations creating each sub-statement.
      */
-    protected Statement methodBlock(final FrameworkMethod method) {
+    protected Statement methodBlock(final FrameworkMethod method){
+        return methodBlock(method, null);
+    }
+    protected Statement methodBlock(final FrameworkMethod method, final RunNotifier notifier) {
         Object test;
         try {
             test = new ReflectiveCallable() {
@@ -302,8 +308,8 @@ public class BlockJUnit4ClassRunner extends SingleTestObjParentRunner<FrameworkM
         Statement statement = methodInvoker(method, test);
         statement = possiblyExpectingExceptions(method, test, statement);
         statement = withPotentialTimeout(method, test, statement);
-        statement = withCheckpoint(statement);
-        statement = withRollback(statement);
+        statement = withCheckpoint(statement, test, notifier);
+        statement = withRollback(statement, test, notifier);
 //        statement = withBefores(method, test, statement);
 //        statement = withAfters(method, test, statement);
         statement = withRules(method, test, statement);
@@ -386,7 +392,7 @@ public class BlockJUnit4ClassRunner extends SingleTestObjParentRunner<FrameworkM
         if(checkpointMethod == null)
         {
             try {
-                checkpointMethod = CheckpointRollbackAgent.class.getMethod("checkpointAllRoots");
+                checkpointMethod = CheckpointRollbackAgent.class.getMethod("checkpointAllRoots",Object.class);
             } catch (NoSuchMethodException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -402,7 +408,7 @@ public class BlockJUnit4ClassRunner extends SingleTestObjParentRunner<FrameworkM
         if(rollbackMethod == null)
         {
             try {
-                rollbackMethod = CheckpointRollbackAgent.class.getMethod("rollbackAllRoots");
+                rollbackMethod = CheckpointRollbackAgent.class.getMethod("rollbackAllRoots",Object.class);
             } catch (NoSuchMethodException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -413,15 +419,35 @@ public class BlockJUnit4ClassRunner extends SingleTestObjParentRunner<FrameworkM
         }
         return rollbackMethod;
     }
-    protected Statement withCheckpoint(Statement statement) {
-        LinkedList<FrameworkMethod> befores = new LinkedList<FrameworkMethod>();
-        befores.add(new FrameworkMethod(getCheckpointMethod()));
-        return new RunBefores(statement, befores, null);
+    protected Statement withCheckpoint(final Statement statement, final Object target, final RunNotifier notifier) {
+        return new Statement() {
+            
+            @Override
+            public void evaluate() throws Throwable {
+                Integer i = (Integer) getCheckpointMethod().invoke(null, target);
+                ((CRIJInstrumented)(notifier)).$$crijCheckpoint(i.intValue());
+                statement.evaluate();
+            }
+        };
     }
-    protected Statement withRollback(Statement statement) {
-        LinkedList<FrameworkMethod> befores = new LinkedList<FrameworkMethod>();
-        befores.add(new FrameworkMethod(getRollbackMethod()));
-        return new RunAfters(statement, befores, null);
+    protected Statement withRollback(final Statement statement, final Object target, final RunNotifier notifier) {
+        return new Statement() {
+
+            @Override
+            public void evaluate() throws Throwable {
+                List<Throwable> errors = new ArrayList<Throwable>();
+                try {
+                    statement.evaluate();
+                } catch (Throwable e) {
+                    errors.add(e);
+                } finally {
+                    Integer i = (Integer) getRollbackMethod().invoke(null, target);
+                    ((CRIJInstrumented)(notifier)).$$crijRollback(i.intValue());
+
+                }
+                MultipleFailureException.assertEmpty(errors);
+            }
+        };
     }
     private Statement withRules(FrameworkMethod method, Object target,
             Statement statement) {
