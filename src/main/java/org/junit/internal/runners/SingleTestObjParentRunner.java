@@ -1,8 +1,11 @@
 package org.junit.internal.runners;
 
+import java.lang.reflect.Method;
+import java.util.LinkedList;
 import java.util.List;
 
 import net.jonbell.crij.runtime.CRIJInstrumented;
+import net.jonbell.crij.runtime.RootCollector;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.internal.AssumptionViolatedException;
@@ -44,6 +47,7 @@ public abstract class SingleTestObjParentRunner<T> extends ParentRunner<T>  {
 //            System.out.println("Class block created");
             Statement statement = classBlock(notifier);
             if (!areAllChildrenIgnored()) {
+                statement = withStartCollectingRoots(statement);
                 statement = withBefores(statement, createTest0());
                 statement = withBeforeClasses(statement);
                 statement = withAfters(statement, createTest0());
@@ -82,13 +86,36 @@ public abstract class SingleTestObjParentRunner<T> extends ParentRunner<T>  {
         if (getTestClass() != lastTestClz) {
             this.lastTestClz = getTestClass();
             this.lastTestObj = createTest();
+            RootCollector.collectObject((CRIJInstrumented)this.lastTestObj);
             System.out.println("##Generating new test object for class: " + this.lastTestClz.getName());
         }
         return this.lastTestObj;
     }
-    
+
+    private static Method collectRootsMethod;
+    private Method getStartCollectingRootsMethod()
+    {
+        if(collectRootsMethod == null)
+        {
+            try {
+                collectRootsMethod = RootCollector.class.getMethod("startCollectingRoots");
+            } catch (NoSuchMethodException e) {
+                throw new Error(e);
+            } catch (SecurityException e) {
+                throw new Error(e);
+            }
+        }
+        return collectRootsMethod;
+    }
+
+    protected Statement withStartCollectingRoots(Statement statement)
+    {
+        LinkedList<FrameworkMethod> befores = new LinkedList<FrameworkMethod>();
+        befores.add(new FrameworkMethod(getStartCollectingRootsMethod()));
+        return new RunBefores(statement, befores, null);
+    }
+
     protected abstract Object createTest() throws Exception;
-    
 
     protected Statement withBefores(Statement statement, Object target) {
         List<FrameworkMethod> befores = getTestClass().getAnnotatedMethods(
