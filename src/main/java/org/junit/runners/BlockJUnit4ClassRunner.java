@@ -5,6 +5,7 @@ import static org.junit.internal.runners.rules.RuleMemberValidator.RULE_VALIDATO
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;

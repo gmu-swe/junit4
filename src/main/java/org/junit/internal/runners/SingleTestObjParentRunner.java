@@ -48,9 +48,9 @@ public abstract class SingleTestObjParentRunner<T> extends ParentRunner<T>  {
             Statement statement = classBlock(notifier);
             if (!areAllChildrenIgnored()) {
                 statement = withStartCollectingRoots(statement);
-                statement = withBefores(statement, createTest0());
+                statement = withBefores(null, createTest0(),statement);
                 statement = withBeforeClasses(statement);
-                statement = withAfters(statement, createTest0());
+                statement = withAfters(null, createTest0(),statement);
                 statement = withAfterClasses(statement);
                 statement = withClassRules(statement);
             }
@@ -116,18 +116,21 @@ public abstract class SingleTestObjParentRunner<T> extends ParentRunner<T>  {
     }
 
     protected abstract Object createTest() throws Exception;
-
-    protected Statement withBefores(Statement statement, Object target) {
-        List<FrameworkMethod> befores = getTestClass().getAnnotatedMethods(
-                Before.class);
-        return befores.isEmpty() ? statement : new RunBefores(statement,
-                befores, target);
-    }
-
-    protected Statement withAfters(Statement statement, Object target) {
-        List<FrameworkMethod> afters = getTestClass().getAnnotatedMethods(
-                After.class);
-        return afters.isEmpty() ? statement : new RunAfters(statement, afters,
-                target);
-    }
+    protected abstract Statement withBefores(FrameworkMethod method, Object target,
+            Statement statement) ;
+    protected abstract Statement withAfters(FrameworkMethod method, Object target,
+            Statement statement) ;
+//    protected Statement withBefores(Statement statement, Object target) {
+//        List<FrameworkMethod> befores = getTestClass().getAnnotatedMethods(
+//                Before.class);
+//        return befores.isEmpty() ? statement : new RunBefores(statement,
+//                befores, target);
+//    }
+//
+//    protected Statement withAfters(Statement statement, Object target) {
+//        List<FrameworkMethod> afters = getTestClass().getAnnotatedMethods(
+//                After.class);
+//        return afters.isEmpty() ? statement : new RunAfters(statement, afters,
+//                target);
+//    }
 }
